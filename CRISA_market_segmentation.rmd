@@ -1,0 +1,264 @@
+---
+title: "clustering, Assgt 3 getting started"
+author: "sid b"
+date: "3/25/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+library(tidyverse)
+
+library(readxl)
+bsData <- read_excel("C:/Users/dhana/Documents/Courses/MSBA/Spring_Sem/IDS 572/Assignment3/Assgt3_BathSoap_Data.xls", sheet = "DM_Sheet")
+
+
+#the data read in may contain empty rows, columns, so remove these
+bsData<-bsData[1:600, 1:46]
+
+#better to change the colNames which contain punctuation, space to _ (like affluence index,etc)
+names(bsData) <- gsub("[[:punct:]]|\\s", "_", names(bsData))
+
+#The data with '%' in values are read in as 'chr' type - change these to numeric
+bsData[20:46]<-lapply(bsData[20:46],function(x)  as.numeric(sub("%", "e-2", x)))
+
+#rename the data
+bsd<- bsData
+
+#for brLoyalty, calculate maxBr as max of purchase by different major brand (excl others)
+bsd<-bsd %>% rowwise() %>%  mutate(maxBr=max(Br__Cd__57__144, Br__Cd__55, Br__Cd__272, Br__Cd__286, Br__Cd__24, Br__Cd__481, Br__Cd__352, Br__Cd__5))
+
+#For purchase by promotions
+bsd<-bsd %>% rowwise() %>%  mutate(maxp_promo=max(Pur_Vol_No_Promo____, Pur_Vol_Promo_6__, Pur_Vol_Other_Promo__))
+
+#For price categories
+bsd<-bsd %>% rowwise() %>%  mutate(maxpc=max(Pr_Cat_1, Pr_Cat_2, Pr_Cat_3, Pr_Cat_4))
+
+#For selling propositions
+bsd<-bsd %>% rowwise() %>%  mutate(maxsp=max(PropCat_5, PropCat_6, PropCat_7, PropCat_8, PropCat_9, PropCat_10, PropCat_11, PropCat_12, PropCat_13, PropCat_14, PropCat_15))
+
+
+```
+
+
+Data exploration, cleaning
+```{r}
+
+#Examine the data - can all attributes be considered as 'numeric'
+summary(as.factor(bsd$FEH))
+
+#convert this to dummies, since the values are not ordinal, and remove the '0' level dummy
+bsd<-bsd %>% mutate(fehDummy=1) %>% pivot_wider(names_from = FEH, values_from = fehDummy, names_prefix = "FEH_", values_fill = list(fehDummy=0))
+bsd<- bsd %>% select(-FEH_0)  # can append this to the last line too
+
+#explore MT
+summary(as.factor(bsd$MT))
+#keep levels 0, 4, 5, 10, 25 as dummies, with 0 in the dummies indicating 'other'
+bsd<- bsd %>% mutate(MT=if_else(MT %in% c(0, 4, 5, 10, 17), MT, -1))
+bsd<-bsd %>% mutate(mtDummy=1) %>% pivot_wider(names_from = MT, values_from = mtDummy, names_prefix = "MT_", values_fill = list(mtDummy=0)) 
+bsd<- bsd %>% select(- `MT_-1`)
+
+#similarly for CHILD, leave out the level '5' for unknown
+bsd<-bsd %>% mutate(mtChild=1) %>% pivot_wider(names_from = CHILD, values_from = mtChild, names_prefix = "CHILD_", values_fill = list(mtChild=0)) %>% select(- CHILD_5) 
+
+#Other variables :
+
+#SEC
+summary(as.factor(bsd$SEC))
+bsd<-bsd %>% mutate(secDummy=1) %>% pivot_wider(names_from = SEC, values_from = secDummy, names_prefix = "SEC_", values_fill = list(secDummy=0))
+
+#SEX
+summary(as.factor(bsd$SEX))
+bsd<-bsd %>% mutate(sexDummy=1) %>% pivot_wider(names_from = SEX, values_from = sexDummy, names_prefix = "SEX_", values_fill = list(sexDummy=0))
+bsd<- bsd %>% select(-SEX_0)
+
+#AGE
+summary(as.factor(bsd$AGE))
+bsd<-bsd %>% mutate(ageDummy=1) %>% pivot_wider(names_from = AGE, values_from = ageDummy, names_prefix = "AGE_", values_fill = list(ageDummy=0))
+
+#EDU
+summary(as.factor(bsd$EDU))
+bsd<-bsd %>% mutate(eduDummy=1) %>% pivot_wider(names_from = EDU, values_from = eduDummy, names_prefix = "EDU_", values_fill = list(eduDummy=0))
+bsd<- bsd %>% select(-EDU_0)
+
+
+#CS
+summary(as.factor(bsd$CS))
+bsd<-bsd %>% mutate(csDummy=1) %>% pivot_wider(names_from = CS, values_from = csDummy, names_prefix = "CS_", values_fill = list(csDummy=0))
+bsd<- bsd %>% select(-CS_0)
+
+
+
+```
+
+
+kMeans clustering
+```{r}
+library(factoextra)
+   #https://www.rdocumentation.org/packages/factoextra/versions/1.0.3
+
+#kmeans -- https://www.rdocumentation.org/packages/stats/versions/3.6.2/topics/kmeans
+
+#clustering on  purchase behavior varables
+PURCHASE_BEHAVIOR <- c('No__of_Brands', 'Brand_Runs', 'Total_Volume', 'No__of__Trans', 'Value', 'Trans___Brand_Runs', 'Vol_Tran', 'Avg__Price', 'maxBr', 'Others_999')
+
+x<- bsd
+kmClus_pb<- x %>% select(PURCHASE_BEHAVIOR) %>% scale() %>%kmeans(centers=4, nstart=25, iter.max = 100)
+#nstart = if centers is a number, how many random sets should be chosen? Can also change the iterations
+#Or create a scaled dataset for clustering, and use this
+xpb<-x %>% select(PURCHASE_BEHAVIOR) %>% scale() 
+
+#kmClus_pb
+
+#visualize the cluster - based on variables used for clustering
+fviz_cluster(kmClus_pb, data=x %>% select(PURCHASE_BEHAVIOR))
+
+  #https://www.rdocumentation.org/packages/factoextra/versions/1.0.6/topics/fviz_cluster
+
+
+#add the cluster variable to the data and check the cluster descriptions in terms of broader set of variables
+x <- x %>% mutate(clusKM=kmClus_pb$cluster)
+
+x %>% group_by(clusKM) %>% summarise_at(c('SEC_1','SEC_2','SEC_3','SEC_4', 'HS', 'SEX_1','SEX_2', 'EDU_1','EDU_2','EDU_3','EDU_4','EDU_5','EDU_6','EDU_7','EDU_8','EDU_9', 'Affluence_Index','AGE_1','AGE_2','AGE_3','AGE_4', 'CHILD_1', 'CHILD_2', 'CHILD_3', 'CHILD_4', 'maxBr', 'No__of_Brands', 'No__of__Trans', 'Brand_Runs', 'Total_Volume', 'Value', 'Trans___Brand_Runs'), mean) %>% view()
+
+
+#Clustering based on basis-for-purchase
+#Basis_For_Purchase <- c('Pur_Vol_No_Promo____', 'Pur_Vol_Promo_6__', 'Pur_Vol_Other_Promo__', 'Pr_Cat_1', 'Pr_Cat_2', 'Pr_Cat_3', 'Pr_Cat_4', 'Pr_Cat_5', 'Pr_Cat_1', 'Pr_Cat_2', 'Pr_Cat_3', 'Pr_Cat_4', 'PropCat_5', 'PropCat_6', 'PropCat_7', 'PropCat_8', 'PropCat_9', 'PropCat_10', 'PropCat_11', 'PropCat_12', 'PropCat_13', 'PropCat_14', 'PropCat_15')
+
+#how many clusters is best
+fviz_nbclust(xpb, kmeans, method = "wss")
+fviz_nbclust(xpb, kmeans, method = "silhouette")
+
+##PAM - Partitioning around mediods
+library(cluster)
+
+  #pam -- https://www.rdocumentation.org/packages/cluster/versions/2.1.0/topics/pam
+
+pam_pb<-pam(xpb, k=3, metric = "euclidean")
+#Partitioning Around Mediods
+
+pam_pb
+pam_pb$clusinfo
+
+fviz_cluster(pam_pb)
+
+
+#silhoutte plot - using the silhoutte function in the cluster package
+   #https://www.rdocumentation.org/packages/cluster/versions/2.1.0/topics/silhouette
+si <- silhouette(pam_pb)
+summary(si)
+plot(si, col=1:3, border=NA)
+
+```
+
+
+Hierarchical clustering
+```{r}
+
+# hclust - https://www.rdocumentation.org/packages/stats/versions/3.6.2/topics/hclust
+# agnes - https://www.rdocumentation.org/packages/cluster/versions/2.1.0/topics/agnes
+
+
+xdist <- dist(xpb, method = "euclidean")
+hierC_pb <- hclust(xdist, method = "average" )
+plot(hierC_pb, cex=0.3, hang=-3, main="hclust-average")
+
+hierC_pb_c <- hclust(xdist, method = "complete" )
+hierC_pb_w <- hclust(xdist, method = "ward.D" )
+
+#using agnes from the cluster package
+hierC_pb_ag_c <- agnes(xdist, method = "complete" )
+
+#check the agglomerative coeff given by agnes
+hierC_pb_ag_c$ac
+
+
+#use cuttree to assign different clusters to examples
+cut3_hierC_pb_ac_c <- cutree(hierC_pb_ag_c, k = 3)
+table(cut3_hierC_pb_ac_c)
+
+cut3_hierC_pb_ac_w <- cutree(hierC_pb_w, k = 3)
+table(cut3_hierC_pb_ac_w)
+
+
+fviz_cluster(list(data=xpb,cluster=cut3_hierC_pb_ac_c ), main="agnes-complete")
+
+
+#dendograms using fviz_dend
+fviz_dend(hierC_pb_w)
+
+fviz_dend(hierC_pb_w, k=3, color_labels_by_k = FALSE, rect=TRUE, main="agnes - Wards")
+
+#circular dendogram
+fviz_dend(hierC_pb_w, k=3, color_labels_by_k = TRUE, type="circular", rect=TRUE, main="agnes - Wards")
+
+
+
+```
+
+
+DBSCAN clustering - example using the 'multishapes' dataset in the 'factoextra' package
+```{r}
+
+data("multishapes")
+
+#Plot the points
+multishapes %>% ggplot(aes(x=x,y=y, col=as.factor(shape)))+geom_point()
+ 
+msKMeans <- kmeans(multishapes[,1:2], 5, nstart = 25)
+
+fviz_cluster(msKMeans, data = multishapes[,1:2], main="kMeans on multishapes")
+
+
+#Now use dbscan 
+library(dbscan)
+
+#dbscan - https://www.rdocumentation.org/packages/dbscan/versions/1.1-5/topics/dbscan
+
+msDbscan <- dbscan(multishapes[,1:2], eps = 0.5, minPts = 5)
+
+fviz_cluster(msDbscan, data=multishapes[,1:2], geom="point", ellipse  = FALSE, main="dbscan eps=0.5, minPts=5")
+
+#optimal eps value
+kNNdistplot(multishapes[,1:2], k=4)
+#includes data points within Ɛ-radius of a data point.
+## eps is this distance that the algorithm uses to decide on whether to club the two points together. We will make use of the average distances of every point to its k nearest neighbors. These k distances are then plotted in ascending order. The point where you see an elbow like bend corresponds to the optimal *eps* value. At this point, a sharp change in the distance occurs, and thus this point serves as a threshold.
+    #https://www.rdocumentation.org/packages/dbscan/versions/1.1-5/topics/kNNdist
+
+```
+
+
+Kernel k-means 
+```{r}
+library(kernlab)
+
+  #kkmeans - https://www.rdocumentation.org/packages/kernlab/versions/0.9-29/topics/kkmeans
+
+kkc_pb<-kkmeans( xpb,centers=3)
+     #uses default values - rbf kernal, and automatically sets the kernel
+kkc_pb
+
+#the cluster assignments for examples is in kkc_pb@.Data - use this for vizualizing using fviz_cluster
+
+fviz_cluster(list(data=xpb, cluster=kkc_pb@.Data), geom="points", main="kkmeans")
+
+
+#polynomial kernel with degree 2
+kkc_pb_p2<-kkmeans( xpb,centers=3, kernel='polydot', kpar=list(degree=2))
+
+#rbf kernel with specified sigma parameter
+kkc_pb_rbf<-kkmeans( xpb,centers=3, kernel='rbfdot', kpar=list(sigma=0.2 ))
+
+```
+
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
