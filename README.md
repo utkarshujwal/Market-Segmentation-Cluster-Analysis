@@ -24,7 +24,7 @@ services; they obtain updated data every month and use it to advise their client
 and promotion strategies. (2) Consumer goods manufacturers who monitor their market share
 using the CRISA database.
 
-### CLuster based on "Purchase Behaviour"
+### Cluster based on "Purchase Behaviour"
 
 Some thought is needed about brand loyalty. For brand loyalty indicators the variables used are :
 1.	Number of brands
@@ -40,6 +40,14 @@ Some thought is needed about brand loyalty. For brand loyalty indicators the var
 
  ![image](https://user-images.githubusercontent.com/29014647/119584579-74f2b180-bd8e-11eb-9eec-f5dafe2f5c1f.png)  ![image](https://user-images.githubusercontent.com/29014647/119584593-7ae89280-bd8e-11eb-94d8-9cbd9c0ea334.png)
  
+Properties of each cluster:
+Cluster 1: In Cluster 1 the maximum number of customers are from SEC2(30%), 95% of them are female customers, have upto high school education, are 45 years or older, there are no children present in their households, have an affluence index of 21% and are 23% loyal to brands they purchase.
+
+
+**Partitioning Around Mediods using Purchase Behavior variables:**
+
+
+
+ ![image](https://user-images.githubusercontent.com/29014647/119584490-3eb53200-bd8e-11eb-881f-4c0126b0f1a6.png)
  
-
-
+ 
