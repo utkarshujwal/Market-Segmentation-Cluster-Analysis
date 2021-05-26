@@ -14,9 +14,11 @@ defined on the basis of socio-economic status, and the market (a collection of c
 CRISA has both transaction data (each row is a transaction) and household data (each row is a
 household), and, for the household data, maintains the following information:
 
-• Demographics of the households (updated annually)
+• Demographics of the households (updated annually).
+
 • Possession of durable goods (car, washing machine, etc.; updated annually) and a
-computed "affluence index" on this basis
+computed "affluence index" on this basis.
+
 • Purchase data of product categories and brands (updated monthly).
 
 CRISA has two categories of clients: (1) Advertising agencies who subscribe to the database
@@ -46,8 +48,8 @@ Cluster 1: In Cluster 1 the maximum number of customers are from SEC2(30%), 95% 
 
 **Partitioning Around Mediods using Purchase Behavior variables:**
 
+![image](https://user-images.githubusercontent.com/29014647/119584490-3eb53200-bd8e-11eb-881f-4c0126b0f1a6.png)
 
 
- ![image](https://user-images.githubusercontent.com/29014647/119584490-3eb53200-bd8e-11eb-881f-4c0126b0f1a6.png)
  
  
